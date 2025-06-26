@@ -1,3 +1,8 @@
+# Load environment variables
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,10 +10,13 @@ from typing import Annotated
 import firebase_admin
 from firebase_admin import credentials, auth
 import os
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+
+from agents.user_whisperer import create_user_whisperer_chain
+
+# Initialize the User Whisperer chain once at startup
+user_whisperer_chain = create_user_whisperer_chain()
+
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -76,3 +84,28 @@ async def get_status():
     Check if the API is running.
     """
     return {"status": "ok"}
+
+
+# --- AI Agent Endpoints ---
+@app.post("/user-whisperer/generate-user-story")
+async def generate_user_story(
+    feedback: dict,  # Expects a JSON body like {"user_feedback": "..."}
+    # We will add the user authentication dependency later
+    # user_id: Annotated[str, Depends(get_current_user_id)]
+):
+    """
+    Endpoint to trigger the User Whisperer agent to generate a user story from feedback.
+    """
+    user_feedback = feedback.get("user_feedback")
+    if not user_feedback:
+        raise HTTPException(status_code=400, detail="User feedback is required.")
+
+    print(f"Received feedback: {user_feedback[:50]}...")
+
+    try:
+        # Invoke the LangChain agent with the user's input
+        result = user_whisperer_chain.invoke({"user_feedback": user_feedback})
+        return {"generated_output": result}
+    except Exception as e:
+        print(f"Error invoking chain: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate output.")
