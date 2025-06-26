@@ -90,7 +90,7 @@ async def get_status():
 @app.post("/user-whisperer/generate-user-story")
 async def generate_user_story(
     feedback: dict,  # Expects a JSON body like {"user_feedback": "..."}
-    # We will add the user authentication dependency later
+    # TODO:I'll add the user authentication dependency later
     # user_id: Annotated[str, Depends(get_current_user_id)]
 ):
     """
