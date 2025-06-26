@@ -30,6 +30,11 @@ export default function UserDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -40,14 +45,17 @@ export default function UserDashboard() {
 
   const handleLogout = async () => {
     try {
+      // Clear any client-side state before logout
+      setImageError(false);
+
       await signOut({
         callbackUrl: '/login',
         redirect: true,
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Fallback: redirect manually if signOut fails
-      router.push('/login');
+      // Force redirect if signOut fails
+      window.location.href = '/login';
     }
   };
 
@@ -61,6 +69,30 @@ export default function UserDashboard() {
 
   // Show loading state while checking authentication
   if (status === 'loading') {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24 bg-dc-white text-dc-black font-sans">
+        <div className="flex flex-col items-center justify-center text-center max-w-xl w-full">
+          <Image
+            src="/define-consult-logo.png"
+            alt="Define Consult Logo"
+            width={60}
+            height={60}
+            priority
+            className="mb-6"
+          />
+          <Card className="bg-dc-white text-dc-black border-dc-gray-200 shadow-lg rounded-xl w-full">
+            <CardContent className="p-6 flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-black"></div>
+              <p className="text-dc-gray">Loading your dashboard...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  // Don't render anything until mounted
+  if (!mounted) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24 bg-dc-white text-dc-black font-sans">
         <div className="flex flex-col items-center justify-center text-center max-w-xl w-full">
@@ -124,7 +156,7 @@ export default function UserDashboard() {
                 {/* Avatar Image or Fallback */}
                 {session.user.image && !imageError ? (
                   <Image
-                    src={session.user.image}
+                    src={session.user.image || '/placeholder.svg'}
                     alt="Profile"
                     width={40}
                     height={40}
