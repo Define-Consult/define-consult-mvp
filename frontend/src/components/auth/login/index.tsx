@@ -5,10 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase/client';
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,8 +16,9 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -40,16 +38,22 @@ export default function LoginForm() {
 
   if (status === 'loading') {
     return (
-      <div className="flex flex-col gap-6 w-full max-w-md mx-auto">
-        <Card className="bg-dc-white text-dc-black border-gray-200 shadow-lg rounded-xl">
-          <CardContent className="p-6">
-            <div className="text-center">Loading...</div>
-          </CardContent>
-        </Card>
+      <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-dc-white text-dc-black font-sans">
+        <div className="flex flex-col items-center justify-center text-center max-w-xl w-full">
+          <Image
+            src="/define-consult-logo.png"
+            alt="Define Consult Logo"
+            width={70}
+            height={70}
+            priority
+            className="animate-pulse drop-shadow-md"
+          />
+        </div>
       </div>
     );
   }
 
+  // Don't render if already authenticated
   if (status === 'authenticated') {
     return null;
   }
@@ -67,9 +71,9 @@ export default function LoginForm() {
       });
 
       if (result?.ok && !result?.error) {
-        toast.success('Successfully logged in! Redirecting to dashboard...');
+        toast.success('Successfully logged in!');
         router.push('/dashboard');
-        router.refresh();
+        router.refresh(); // Ensure the session is updated
       } else {
         setError('Invalid email or password. Please try again.');
         toast.error('Login failed. Please check your credentials.');
@@ -194,7 +198,14 @@ export default function LoginForm() {
               type="submit"
               className="w-full bg-dc-black text-dc-white hover:bg-gray-800 py-3 rounded-lg"
               disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Logging in...</span>
+                </div>
+              ) : (
+                'Login'
+              )}
             </Button>
           </form>
 
