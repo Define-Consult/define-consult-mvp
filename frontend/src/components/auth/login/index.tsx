@@ -28,26 +28,72 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before rendering to prevent hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (mounted && status === 'authenticated') {
       router.push('/dashboard');
     }
-  }, [status, router]);
+  }, [status, router, mounted]);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="bg-dc-white flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2 self-center font-medium">
+            <Image
+              src="/define-consult-logo.png"
+              alt="Define Consult Logo"
+              width={70}
+              height={70}
+              priority
+              className="mb-3"
+            />
+            <span className="text-lg">define consult.®</span>
+          </Link>
+          <Card className="bg-dc-white text-dc-black border-gray-200 shadow-lg rounded-xl">
+            <CardContent className="p-6 flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-black"></div>
+              <p className="text-dc-gray">Loading...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-dc-white text-dc-black font-sans">
-        <div className="flex flex-col items-center justify-center text-center max-w-xl w-full">
-          <Image
-            src="/define-consult-logo.png"
-            alt="Define Consult Logo"
-            width={70}
-            height={70}
-            priority
-            className="animate-pulse drop-shadow-md"
-          />
+      <div className="bg-dc-white flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2 self-center font-medium">
+            <Image
+              src="/define-consult-logo.png"
+              alt="Define Consult Logo"
+              width={70}
+              height={70}
+              priority
+              className="mb-3"
+            />
+            <span className="text-lg">define consult.®</span>
+          </Link>
+          <Card className="bg-dc-white text-dc-black border-gray-200 shadow-lg rounded-xl">
+            <CardContent className="p-6 flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-black"></div>
+              <p className="text-dc-gray">Loading...</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
