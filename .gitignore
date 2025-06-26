@@ -8,5 +8,8 @@ node_modules/
 .env.local
 .env
 
+# Firebase
+firebase-adminsdk.json
+
 # macOS
 .DS_Store
