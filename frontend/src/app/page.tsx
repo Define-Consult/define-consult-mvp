@@ -27,7 +27,10 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-8 md:p-24 bg-[#F5F5F5] text-[#141414] font-sans">
+    <main
+      className="flex flex-col items-center justify-center 
+    min-h-screen p-8 md:p-24 bg-[#F5F5F5] text-[#141414]
+    font-sans">
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center text-center max-w-4xl w-full">
         {/* Logo */}
@@ -52,7 +55,10 @@ export default function HomePage() {
           innovation, not busywork.
         </p>
 
-        <Button className="bg-[#141414] text-white font-bold py-4 px-10 rounded-lg shadow-lg hover:bg-gray-800 transition-colors text-lg md:text-xl h-auto">
+        <Button
+          className="bg-[#141414] text-white font-bold py-4 px-10 
+        rounded-lg shadow-lg hover:bg-gray-800 transition-colors text-lg
+        md:text-xl h-auto">
           Get Started Free
         </Button>
       </div>
