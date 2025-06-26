@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function HomePage() {
@@ -55,12 +56,14 @@ export default function HomePage() {
           innovation, not busywork.
         </p>
 
-        <Button
-          className="bg-[#141414] text-white font-bold py-4 px-10 
+        <Link href="/sign-up" passHref>
+          <Button
+            className="bg-dc-black text-dc-white font-bold py-4 px-10 
         rounded-lg shadow-lg hover:bg-gray-800 transition-colors text-lg
         md:text-xl h-auto">
-          Get Started Free
-        </Button>
+            Get Started Free
+          </Button>
+        </Link>
       </div>
 
       {/* Backend Status Indicator */}
