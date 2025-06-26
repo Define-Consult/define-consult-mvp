@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,7 +38,7 @@ export default function SignupForm() {
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(
+    const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/.test(
       password
     );
     return {
@@ -66,32 +68,73 @@ export default function SignupForm() {
     }
 
     try {
+      // 1. Create the user account
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+
       if (userCredential.user) {
-        await sendEmailVerification(userCredential.user);
+        // 2. Send verification email (for spam prevention only)
+        try {
+          await sendEmailVerification(userCredential.user);
+          toast.success(
+            'Account created! A verification email has been sent to confirm your email address.'
+          );
+        } catch (emailError) {
+          console.warn('Failed to send verification email:', emailError);
+          toast.info(
+            'Account created successfully! You may receive a verification email shortly.'
+          );
+        }
 
-        // Use toast instead of alert
-        toast.success(
-          'Verification email sent! Please check your inbox and verify your email to log in.'
-        );
+        // TODO: Backend Integration (PostgreSQL) - Next Phase
+        // Once the FastAPI backend is ready, we will make a secure API call here
+        // to create a user record in the PostgreSQL database using userCredential.user.uid
+        // Example: await fetch('/api/create-user', { method: 'POST', body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email }) });
 
-        // TODO: Call our backend API to create a user record in PostgreSQL
-        // I'll build this endpoint in the next phase!
-        // await fetch('/api/create-user', { method: 'POST', body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email }) });
+        // 3. Sign the user into NextAuth using credentials provider
+        const result = await signIn('credentials', {
+          email: email,
+          password: password,
+          redirect: false,
+        });
 
-        router.push('/login');
+        if (result?.ok && !result?.error) {
+          // 4. Successfully signed up and logged in, redirect to dashboard
+          router.push('/dashboard');
+          router.refresh(); // Ensure the session is updated
+        } else {
+          console.error('NextAuth sign-in error after signup:', result?.error);
+          toast.error(
+            'Account created but automatic login failed. Please try logging in manually.'
+          );
+          router.push('/login');
+        }
       }
     } catch (err: any) {
-      setError(err.message);
       console.error('Email signup error:', err);
-      toast.error(err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        setError(
+          'An account with this email already exists. Please try logging in instead.'
+        );
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Please choose a stronger password.');
+      } else {
+        setError(err.message || 'Failed to create account. Please try again.');
+      }
+
+      toast.error(err.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignup = () => {
+    signIn('google', { callbackUrl: '/dashboard' });
   };
 
   const PasswordRequirementItem = ({
@@ -141,8 +184,9 @@ export default function SignupForm() {
             <div className="grid gap-6">
               <Button
                 variant="outline"
+                type="button"
                 className="w-full flex items-center justify-center gap-2 bg-dc-white border border-gray-300 text-dc-black py-3 hover:bg-gray-100 transition-colors rounded-lg"
-                onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+                onClick={handleGoogleSignup}
                 disabled={loading}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -247,7 +291,7 @@ export default function SignupForm() {
               type="submit"
               className="w-full bg-dc-black text-dc-white hover:bg-gray-800 py-3 rounded-lg"
               disabled={loading}>
-              {loading ? 'Signing up...' : 'Sign Up'}
+              {loading ? 'Creating Account...' : 'Get Started'}
             </Button>
           </form>
 
