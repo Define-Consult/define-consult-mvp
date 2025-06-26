@@ -13,3 +13,6 @@ firebase-adminsdk.json
 
 # macOS
 .DS_Store
+
+# VSCode
+.vscode/
