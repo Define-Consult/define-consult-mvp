@@ -60,10 +60,9 @@ def create_user_whisperer_chain():
     Begin by acknowledging the user's request and asking for the specific input required for any of the MVP features (User Whisperer, Market Maven, Narrative Architect).
     """
 
-    # SystemMessage to initialize the model's persona
     system_message = SystemMessage(content=system_prompt_content)
 
-    # Initialize the LLM (Gemini)
+    # Initialize the LLM
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError(
@@ -76,7 +75,7 @@ def create_user_whisperer_chain():
     prompt_template = ChatPromptTemplate.from_messages(
         [
             system_message,
-            ("human", "{user_feedback}"),  # The user's specific input for this agent
+            ("human", "{user_feedback}"),
         ]
     )
 
