@@ -1,7 +1,15 @@
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-from database import Base
+from db.database import Base
+
+
+# --- Plan Model ---
+class Plan(Base):
+    __tablename__ = "plans"
+    id = sa.Column(sa.Integer, primary_key=True, index=True)
+    name = sa.Column(sa.String, unique=True, index=True)
+    # will add other fields like price, features, etc. as needed later.
 
 
 # --- User Model ---
@@ -17,9 +25,7 @@ class User(Base):
     role_at_company = sa.Column(sa.String)
     industry = sa.Column(sa.String)
     linkedin_profile_url = sa.Column(sa.String)
-    current_plan_id = sa.Column(
-        sa.Integer, sa.ForeignKey("plans.id")
-    )  # Assumes a 'plans' table exists
+    current_plan_id = sa.Column(sa.Integer, sa.ForeignKey("plans.id"))
     billing_customer_id = sa.Column(sa.String)
     usage_stats = sa.Column(JSONB)
     notification_preferences = sa.Column(JSONB)
