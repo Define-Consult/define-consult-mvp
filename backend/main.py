@@ -3,23 +3,31 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
 from typing import Annotated
 import firebase_admin
 from firebase_admin import credentials, auth
 import os
 
+from db.database import Base, engine, get_db
+from sqlalchemy.orm import Session
 
+from models.models import User
+
+from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
 
-# Initialize the User Whisperer chain once at startup
+
 user_whisperer_chain = create_user_whisperer_chain()
 
 
 # Initialize FastAPI app
 app = FastAPI()
+
+app.include_router(auth_router)
 
 # --- CORS Middleware ---
 origins = [
@@ -42,6 +50,17 @@ try:
 except Exception as e:
     print(f"Error initializing Firebase Admin SDK: {e}")
 
+
+# --- Database Startup Event ---
+@app.on_event("startup")
+def on_startup():
+    """
+    Create all database tables when the application starts up.
+    """
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created successfully.")
+
+
 # --- Authentication Logic ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -51,7 +70,6 @@ async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]):
     Dependency to get the current user's ID from a Firebase ID token.
     """
     try:
-        # Verify the Firebase ID token
         decoded_token = auth.verify_id_token(token)
         return decoded_token["uid"]
     except Exception as e:
@@ -63,16 +81,67 @@ async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]):
         )
 
 
-# --- Simple protected endpoint for testing auth ---
+# --- Pydantic Model for creating a user profile ---
+class UserProfileCreate(BaseModel):
+    firebase_uid: str
+    email: EmailStr
+    name: str | None = None
+    avatar_url: str | None = None
+    company_name: str | None = None
+    role_at_company: str | None = None
+    industry: str | None = None
+    linkedin_profile_url: str | None = None
+    current_plan_id: int | None = None
+    billing_customer_id: str | None = None
+    usage_stats: dict | None = None
+    notification_preferences: dict | None = None
+    brand_tone_preferences: dict | None = None
+
+
+# --- User Profile Endpoints ---
+user_router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@user_router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_user_profile(
+    user_data: UserProfileCreate, db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Endpoint to create a new user profile in the database.
+    """
+    existing_user = (
+        db.query(User).filter(User.firebase_uid == user_data.firebase_uid).first()
+    )
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this UID already exists",
+        )
+
+    new_user_profile = User(**user_data.model_dump())
+
+    db.add(new_user_profile)
+    db.commit()
+    db.refresh(new_user_profile)
+
+    return new_user_profile
+
+
+app.include_router(user_router)
+
+
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to Define Consult API"}
 
 
 @app.get("/protected")
-async def protected_route(user_id: Annotated[str, Depends(get_current_user_id)]):
+async def protected_route(
+    user_id: Annotated[str, Depends(get_current_user_id)],
+    db: Annotated[Session, Depends(get_db)],
+):
     """
-    A route that requires authentication.
+    A route that requires authentication and a database connection.
     """
     return {"message": f"Hello, authenticated user! Your UID is {user_id}"}
 
@@ -103,7 +172,6 @@ async def generate_user_story(
     print(f"Received feedback: {user_feedback[:50]}...")
 
     try:
-        # Invoke the LangChain agent with the user's input
         result = user_whisperer_chain.invoke({"user_feedback": user_feedback})
         return {"generated_output": result}
     except Exception as e:
