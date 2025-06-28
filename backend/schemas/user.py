@@ -15,3 +15,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True 
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    avatar_url: str | None = None
