@@ -108,10 +108,6 @@ async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]):
 # User endpoints directly on app, as per last request
 app.include_router(auth_router)
 
-# NEW: Router for Plans
-plan_router = APIRouter(prefix="/api/v1/plans", tags=["Plans"])
-app.include_router(plan_router)
-
 
 # --- General API Endpoints ---
 @app.get("/")
