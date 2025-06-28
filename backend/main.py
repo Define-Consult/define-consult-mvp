@@ -262,3 +262,26 @@ async def update_user_by_firebase_uid(
     logger.info(f"User with firebase_uid: {firebase_uid} updated successfully.")
     
     return db_user
+
+@app.delete("/api/v1/users/{firebase_uid}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_by_firebase_uid(
+    firebase_uid: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Deletes a user from the database by their Firebase UID.
+    """
+    db_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    db.delete(db_user)
+    db.commit()
+
+    logger.info(f"User with firebase_uid: {firebase_uid} deleted successfully.")
+    
+    return
