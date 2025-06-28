@@ -47,3 +47,5 @@ class UserUpdate(BaseModel):
     usage_stats: Optional[Dict] = None
     notification_preferences: Optional[Dict] = None
     brand_tone_preferences: Optional[Dict] = None
+
+    
