@@ -17,7 +17,7 @@ from db.database import Base, engine, get_db
 from sqlalchemy.orm import Session
 
 from models.models import User
-from schemas.user import UserCreate
+from schemas.user import UserCreate, UserResponse
 
 from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
@@ -214,3 +214,22 @@ async def create_user_in_db(
     logger.info(f"New user created in DB with firebase_uid: {new_user.firebase_uid}")
     
     return {"message": "User record created successfully", "user_id": new_user.id}
+
+@app.get("/api/v1/users/{firebase_uid}", response_model=UserResponse)
+async def get_user_by_firebase_uid(
+    firebase_uid: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieves a single user from the database by their Firebase UID.
+    """
+    db_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+    
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    return db_user
+
