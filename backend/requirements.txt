@@ -94,3 +94,4 @@ zstandard==0.23.0
 celery
 redis
 python-multipart
+alembic
