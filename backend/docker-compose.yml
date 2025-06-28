@@ -23,12 +23,13 @@ services:
   backend:
     build: .
     restart: always
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - '8000:8000'
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      SQLALCHEMY_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
     depends_on:
       - db
       - redis
@@ -41,7 +42,7 @@ services:
   worker:
     build: .
     restart: always
-    command: celery -A backend.main.celery_app worker --loglevel=info
+    command: celery -A main.celery_app worker --loglevel=info
     depends_on:
       - db
       - redis
@@ -50,6 +51,11 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      SQLALCHEMY_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379/0
+      PYTHONPATH: /app
 
 volumes:
   postgres_data:
