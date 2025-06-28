@@ -8,8 +8,16 @@ from db.database import Base
 class Plan(Base):
     __tablename__ = "plans"
     id = sa.Column(sa.Integer, primary_key=True, index=True)
-    name = sa.Column(sa.String, unique=True, index=True)
-    # will add other fields like price, features, etc. as needed later.
+    name = sa.Column(sa.String, unique=True, index=True, nullable=False)
+    stripe_price_id = sa.Column(sa.String, nullable=True)
+    monthly_agent_action_limit = sa.Column(sa.Integer, nullable=False)
+    price_usd_per_month = sa.Column(sa.Numeric(10, 2), nullable=False)
+    is_metered_billing = sa.Column(sa.Boolean, default=False, nullable=False)
+    per_action_cost_usd = sa.Column(sa.Numeric(10, 4), nullable=True)
+    available_integrations = sa.Column(JSONB, nullable=False, default=[])
+    priority_support = sa.Column(sa.Boolean, default=False, nullable=False)
+    is_team_plan = sa.Column(sa.Boolean, default=False, nullable=False)
+    created_at = sa.Column(sa.DateTime(timezone=True), server_default=func.now())
 
 
 # --- User Model ---
