@@ -17,7 +17,7 @@ from db.database import Base, engine, get_db
 from sqlalchemy.orm import Session
 
 from models.models import User
-from schemas.user import UserCreate, UserResponse
+from schemas.user import UserCreate, UserResponse, UserUpdate
 
 from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
@@ -233,3 +233,32 @@ async def get_user_by_firebase_uid(
     
     return db_user
 
+@app.patch("/api/v1/users/{firebase_uid}", response_model=UserResponse)
+async def update_user_by_firebase_uid(
+    firebase_uid: str,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates an existing user's details in the database by their Firebase UID.
+    """
+    db_user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+    
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    # Update only the fields that are provided in the request body
+    if user_data.name is not None:
+        db_user.name = user_data.name
+    if user_data.avatar_url is not None:
+        db_user.avatar_url = user_data.avatar_url
+        
+    db.commit()
+    db.refresh(db_user)
+    
+    logger.info(f"User with firebase_uid: {firebase_uid} updated successfully.")
+    
+    return db_user
