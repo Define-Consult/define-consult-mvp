@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
+import { POST } from '@/app/api/auth/[...nextauth]/route';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -89,12 +90,37 @@ export default function SignupForm() {
           );
         }
 
-        // TODO: Backend Integration (PostgreSQL) - Next Phase
-        // Once the FastAPI backend is ready, we will make a secure API call here
-        // to create a user record in the PostgreSQL database using userCredential.user.uid
-        // Example: await fetch('/api/create-user', { method: 'POST', body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email }) });
+        // 3. Backend Integration (PostgreSQL)
+        try {
+          const user = userCredential.user;
+          const res = await fetch('api/v1/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebase_uid: user.uid,
+              email: user.email,
+              name: user.displayName,
+              avatar_url: user.photoURL,
+            }),
+          });
 
-        // 3. Sign the user into NextAuth using credentials provider
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(
+              errorData.detail || 'Failed to create user in backend'
+            );
+          }
+          toast.success('User synced with backend successfully');
+        } catch (backendError: any) {
+          console.error('Backend sync error:', backendError);
+          toast.error(
+            `Failed to sync user with backend: ${backendError.message}`
+          );
+        }
+
+        // 4. Sign the user into NextAuth using credentials provider
         const result = await signIn('credentials', {
           email: email,
           password: password,
@@ -102,9 +128,9 @@ export default function SignupForm() {
         });
 
         if (result?.ok && !result?.error) {
-          // 4. Successfully signed up and logged in, redirect to dashboard
+          // 5. Successfully signed up and logged in, redirect to dashboard
           router.push('/dashboard');
-          router.refresh(); // Ensure the session is updated
+          router.refresh();
         } else {
           console.error('NextAuth sign-in error after signup:', result?.error);
           toast.error(
