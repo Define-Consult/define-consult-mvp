@@ -10,7 +10,6 @@ from pydantic import BaseModel, EmailStr
 from typing import Annotated
 import firebase_admin
 from firebase_admin import credentials, auth
-import os
 import time
 
 from celery import Celery 
@@ -19,25 +18,10 @@ from db.database import Base, engine, get_db
 from sqlalchemy.orm import Session
 
 from models.models import User
-from schemas.user import UserResponse, UserUpdate
+from schemas.user import UserCreate, UserResponse, UserUpdate
 from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
 
-# --- Pydantic Model for creating a user profile ---
-class UserProfileCreate(BaseModel):
-    firebase_uid: str
-    email: EmailStr
-    name: str | None = None
-    avatar_url: str | None = None
-    company_name: str | None = None
-    role_at_company: str | None = None
-    industry: str | None = None
-    linkedin_profile_url: str | None = None
-    current_plan_id: int | None = None
-    billing_customer_id: str | None = None
-    usage_stats: dict | None = None
-    notification_preferences: dict | None = None
-    brand_tone_preferences: dict | None = None
 
 # --- Logger Initialization ---
 logger = logging.getLogger(__name__)
@@ -181,7 +165,7 @@ async def upload_transcript(file: UploadFile = File(...)):
 # --- Consolidated User Profile Endpoints within a Router ---
 @user_router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user_profile(
-    user_data: UserProfileCreate, db: Annotated[Session, Depends(get_db)]
+    user_data: UserCreate, db: Annotated[Session, Depends(get_db)]
 ):
     """
     Endpoint to create a new user profile in the database.
