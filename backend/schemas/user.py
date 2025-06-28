@@ -5,3 +5,13 @@ class UserCreate(BaseModel):
     email: str
     name: str | None = None
     avatar_url: str | None = None
+
+class UserResponse(BaseModel):
+    id: int 
+    firebase_uid: str
+    email: str
+    name: str | None = None
+    avatar_url: str | None = None
+
+    class Config:
+        from_attributes = True 
