@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Annotated
 import firebase_admin
 from firebase_admin import credentials, auth
+import os
 import time
 
 from celery import Celery 
@@ -17,8 +18,11 @@ from celery import Celery
 from db.database import Base, engine, get_db
 from sqlalchemy.orm import Session
 
-from models.models import User
+from models.models import User, Plan 
+
 from schemas.user import UserCreate, UserResponse, UserUpdate
+from schemas.plans import PlanCreate, PlanResponse, PlanUpdate
+
 from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
 
@@ -66,7 +70,7 @@ def process_transcript_task(file_content_id: str):
     Simulates processing a transcript in a background task.
     """
     logger.info(f"Received task to process file with ID: {file_content_id}")
-    time.sleep(10)
+    time.sleep(10) # Simulate a long-running task
     logger.info(f"Finished processing file with ID: {file_content_id}")
     return {"status": "completed", "file_id": file_content_id}
 
@@ -101,12 +105,15 @@ async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]):
 
 
 # --- API Routers ---
-user_router = APIRouter(prefix="/users", tags=["Users"])
+# User endpoints directly on app, as per last request
 app.include_router(auth_router)
-app.include_router(user_router)
+
+# NEW: Router for Plans
+plan_router = APIRouter(prefix="/api/v1/plans", tags=["Plans"])
+app.include_router(plan_router)
 
 
-# --- API Endpoints ---
+# --- General API Endpoints ---
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to Define Consult API"}
@@ -162,8 +169,8 @@ async def upload_transcript(file: UploadFile = File(...)):
     return {"message": "Transcript uploaded successfully. Processing will begin shortly.", "file_id": file_content_id}
 
 
-# --- Consolidated User Profile Endpoints within a Router ---
-@user_router.post("/", status_code=status.HTTP_201_CREATED)
+# --- User Profile Endpoints ---
+@app.post("/api/v1/users", status_code=status.HTTP_201_CREATED)
 async def create_user_profile(
     user_data: UserCreate, db: Annotated[Session, Depends(get_db)]
 ):
@@ -179,6 +186,7 @@ async def create_user_profile(
             detail="User with this UID already exists",
         )
 
+    # Use UserCreate to instantiate the database model
     new_user_profile = User(**user_data.model_dump())
     db.add(new_user_profile)
     db.commit()
@@ -186,7 +194,7 @@ async def create_user_profile(
 
     return new_user_profile
 
-@user_router.get("/{firebase_uid}", response_model=UserResponse)
+@app.get("/api/v1/users/{firebase_uid}", response_model=UserResponse)
 async def get_user_by_firebase_uid(
     firebase_uid: str,
     db: Session = Depends(get_db)
@@ -204,11 +212,11 @@ async def get_user_by_firebase_uid(
     
     return db_user
 
-@user_router.patch("/{firebase_uid}", response_model=UserResponse)
+@app.patch("/api/v1/users/{firebase_uid}", response_model=UserResponse)
 async def update_user_by_firebase_uid(
     firebase_uid: str,
     user_data: UserUpdate,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)]
 ):
     """
     Updates an existing user's details in the database by their Firebase UID.
@@ -231,10 +239,10 @@ async def update_user_by_firebase_uid(
     
     return db_user
 
-@user_router.delete("/{firebase_uid}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/v1/users/{firebase_uid}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_by_firebase_uid(
     firebase_uid: str,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)]
 ):
     """
     Deletes a user from the database by their Firebase UID.
@@ -252,4 +260,85 @@ async def delete_user_by_firebase_uid(
 
     logger.info(f"User with firebase_uid: {firebase_uid} deleted successfully.")
     
+    return
+
+
+# ---  Plan Endpoints ---
+@app.post("/api/v1/plans", status_code=status.HTTP_201_CREATED)
+async def create_plan(
+    plan_data: PlanCreate, db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Creates a new plan in the database.
+    """
+    new_plan = Plan(**plan_data.model_dump())
+    db.add(new_plan)
+    db.commit()
+    db.refresh(new_plan)
+    return new_plan
+
+@app.get("/api/v1/plans", response_model=list[PlanResponse])
+async def get_all_plans(db: Annotated[Session, Depends(get_db)]):
+    """
+    Retrieves all plans from the database.
+    """
+    plans = db.query(Plan).all()
+    return plans
+
+@app.get("/api/v1/plans/{plan_id}", response_model=PlanResponse)
+async def get_plan_by_id(
+    plan_id: int, db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Retrieves a single plan by its ID.
+    """
+    db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
+    if db_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plan not found"
+        )
+    return db_plan
+
+@app.patch("/api/v1/plans/{plan_id}", response_model=PlanResponse)
+async def update_plan(
+    plan_id: int,
+    plan_data: PlanUpdate,
+    db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Updates an existing plan's details.
+    """
+    db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
+    if db_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plan not found"
+        )
+    
+    for key, value in plan_data.model_dump(exclude_unset=True).items():
+        setattr(db_plan, key, value)
+    
+    db.commit()
+    db.refresh(db_plan)
+    logger.info(f"Plan with ID: {plan_id} updated successfully.")
+    return db_plan
+
+@app.delete("/api/v1/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_plan(
+    plan_id: int, db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Deletes a plan from the database.
+    """
+    db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
+    if db_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plan not found"
+        )
+    
+    db.delete(db_plan)
+    db.commit()
+    logger.info(f"Plan with ID: {plan_id} deleted successfully.")
     return
