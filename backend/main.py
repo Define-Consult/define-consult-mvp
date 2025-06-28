@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
+import logging
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -16,6 +17,7 @@ from db.database import Base, engine, get_db
 from sqlalchemy.orm import Session
 
 from models.models import User
+from schemas.user import UserCreate
 
 from users.auth import router as auth_router
 from agents.user_whisperer import create_user_whisperer_chain
@@ -177,3 +179,38 @@ async def generate_user_story(
     except Exception as e:
         print(f"Error invoking chain: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate output.")
+
+
+logger = logging.getLogger(__name__)
+
+@app.post("/api/v1/users", status_code=status.HTTP_201_CREATED)
+async def create_user_in_db(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Creates a new user record in the PostgreSQL database.
+    This endpoint should be called by the frontend after a user signs up with Firebase.
+    """
+    db_user = db.query(User).filter(User.firebase_uid == user_data.firebase_uid).first()
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this Firebase UID already exists"
+        )
+    
+    # Create the new user record in the database
+    new_user = User(
+        firebase_uid=user_data.firebase_uid,
+        email=user_data.email,
+        name=user_data.name,
+        avatar_url=user_data.avatar_url
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    logger.info(f"New user created in DB with firebase_uid: {new_user.firebase_uid}")
+    
+    return {"message": "User record created successfully", "user_id": new_user.id}
