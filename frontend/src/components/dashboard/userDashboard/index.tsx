@@ -26,6 +26,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import AIActionCenter from '@/components/dashboard/aiActionCenter';
+
 export default function UserDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -244,7 +246,12 @@ export default function UserDashboard() {
             )}
           </section>
 
-          {/* Key Information and Action Cards */}
+          {/* AI Action Center - Main Feature */}
+          <section className="space-y-6">
+            <AIActionCenter />
+          </section>
+
+          {/* Account Management Section */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Account Information Card */}
             <Card className="bg-dc-white border-dc-gray-200 shadow-lg rounded-2xl p-6 transition-transform transform hover:scale-[1.01] hover:shadow-2xl">
