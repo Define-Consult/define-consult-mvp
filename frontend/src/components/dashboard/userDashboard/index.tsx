@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Mail,
   CheckCircle,
@@ -13,6 +14,10 @@ import {
   LogOut,
   Settings,
   User,
+  Brain,
+  TrendingUp,
+  PenTool,
+  Home,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -27,12 +32,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import AIActionCenter from '@/components/dashboard/aiActionCenter';
+import UserWhispererComponent from '@/components/dashboard/userWhisperer';
+import MarketMavenComponent from '@/components/dashboard/marketMaven';
+import NarrativeArchitectComponent from '@/components/dashboard/narrativeArchitect';
 
 export default function UserDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     setMounted(true);
@@ -211,127 +220,194 @@ export default function UserDashboard() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 container mx-auto px-6 py-12 md:py-16">
-        <div className="space-y-10">
-          {/* Welcome and Verification Section */}
-          <section className="space-y-6">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-dc-black tracking-tighter">
+      <main className="flex-1 container mx-auto px-6 py-8">
+        <div className="space-y-8">
+          {/* Welcome Section */}
+          <section className="space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-bold text-dc-black tracking-tight">
               Welcome back, {session.user.name || 'User'}!
             </h1>
             <p className="text-lg text-dc-gray max-w-2xl">
-              This is your personal dashboard. Here you can manage your account
-              and access all your tools.
+              Access your AI agents to analyze customer feedback, track
+              competitors, and generate content.
             </p>
 
             {/* Email Verification Status Banner */}
             {session.user.emailVerified === false && (
-              <Alert className="bg-gray-50 text-dc-black border border-gray-200 shadow-sm rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 transition-all duration-300">
-                <Mail className="h-8 w-8 text-dc-black flex-shrink-0" />
+              <Alert className="bg-amber-50 text-amber-800 border border-amber-200 shadow-sm rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <Mail className="h-6 w-6 text-amber-600 flex-shrink-0" />
                 <div className="flex-1 space-y-1">
-                  <AlertTitle className="text-lg font-bold">
-                    Please verify your email.
+                  <AlertTitle className="text-base font-semibold">
+                    Please verify your email
                   </AlertTitle>
-                  <AlertDescription className="text-sm text-dc-gray">
-                    A verification link has been sent to **{session.user.email}
-                    **. Please check your inbox to activate your account.
+                  <AlertDescription className="text-sm">
+                    A verification link has been sent to {session.user.email}.
+                    Please check your inbox.
                   </AlertDescription>
                 </div>
                 <Button
                   variant="outline"
                   onClick={handleResendVerification}
-                  className="flex-shrink-0 w-full sm:w-auto mt-4 sm:mt-0 bg-dc-white text-dc-black border border-dc-black hover:bg-gray-100 transition-colors">
+                  className="flex-shrink-0 w-full sm:w-auto border-amber-300 text-amber-700 hover:bg-amber-100">
                   Resend Email
                 </Button>
               </Alert>
             )}
           </section>
 
-          {/* AI Action Center - Main Feature */}
+          {/* Tabbed Interface for AI Agents */}
           <section className="space-y-6">
-            <AIActionCenter />
-          </section>
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger
+                  value="overview"
+                  className="flex items-center gap-2">
+                  <Home className="h-4 w-4" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="user-whisperer"
+                  className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">User Whisperer</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="market-maven"
+                  className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="hidden sm:inline">Market Maven</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="narrative-architect"
+                  className="flex items-center gap-2">
+                  <PenTool className="h-4 w-4" />
+                  <span className="hidden sm:inline">Narrative Architect</span>
+                </TabsTrigger>
+              </TabsList>
 
-          {/* Account Management Section */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Account Information Card */}
-            <Card className="bg-dc-white border-dc-gray-200 shadow-lg rounded-2xl p-6 transition-transform transform hover:scale-[1.01] hover:shadow-2xl">
-              <CardHeader className="p-0 mb-4">
-                <CardTitle className="text-2xl font-bold">Account</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 space-y-4">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-dc-gray">Email:</span>
-                    <span className="font-semibold">{session.user.email}</span>
+              <TabsContent value="overview" className="space-y-6">
+                <div className="space-y-6">
+                  {/* AI Action Center Overview */}
+                  <AIActionCenter />
+
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card
+                      className="cursor-pointer transition-all hover:shadow-lg"
+                      onClick={() => setActiveTab('user-whisperer')}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Brain className="h-5 w-5 text-blue-600" />
+                          User Whisperer
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-dc-gray mb-4">
+                          Upload and analyze customer feedback transcripts
+                        </p>
+                        <Button variant="outline" className="w-full">
+                          Analyze Transcripts
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card
+                      className="cursor-pointer transition-all hover:shadow-lg"
+                      onClick={() => setActiveTab('market-maven')}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <TrendingUp className="h-5 w-5 text-green-600" />
+                          Market Maven
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-dc-gray mb-4">
+                          Track competitors and analyze market trends
+                        </p>
+                        <Button variant="outline" className="w-full">
+                          Analyze Competitors
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card
+                      className="cursor-pointer transition-all hover:shadow-lg"
+                      onClick={() => setActiveTab('narrative-architect')}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <PenTool className="h-5 w-5 text-purple-600" />
+                          Narrative Architect
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-dc-gray mb-4">
+                          Generate marketing content and copy
+                        </p>
+                        <Button variant="outline" className="w-full">
+                          Generate Content
+                        </Button>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-dc-gray">Status:</span>
-                    <span
-                      className={`font-semibold ${
-                        session.user.emailVerified
-                          ? 'text-green-600'
-                          : 'text-red-500'
-                      }`}>
-                      {session.user.emailVerified ? 'Verified' : 'Unverified'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-dc-gray">User ID:</span>
-                    <span className="font-mono text-dc-black text-xs break-all">
-                      {session.user.id}
-                    </span>
-                  </div>
+
+                  {/* Account Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <User className="h-5 w-5" />
+                        Account Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-dc-gray">Email:</span>
+                        <span className="font-semibold">
+                          {session.user.email}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-dc-gray">
+                          Status:
+                        </span>
+                        <span
+                          className={`font-semibold ${
+                            session.user.emailVerified
+                              ? 'text-green-600'
+                              : 'text-red-500'
+                          }`}>
+                          {session.user.emailVerified
+                            ? 'Verified'
+                            : 'Unverified'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-dc-gray">
+                          User ID:
+                        </span>
+                        <span className="font-mono text-dc-black text-xs break-all">
+                          {session.user.id}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <Button
-                  variant="outline"
-                  className="w-full h-12 bg-dc-white border border-dc-black hover:bg-gray-100 text-dc-black font-semibold rounded-lg transition-colors">
-                  <Settings size={20} className="mr-2" />
-                  Manage Profile
-                </Button>
-              </CardContent>
-            </Card>
+              </TabsContent>
 
-            {/* Other Action Cards */}
-            <Card className="bg-dc-white border-dc-gray-200 shadow-lg rounded-2xl p-6 transition-transform transform hover:scale-[1.01] hover:shadow-2xl">
-              <CardHeader className="p-0 mb-4">
-                <CardTitle className="text-2xl font-bold">Product</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 space-y-4">
-                <p className="text-sm text-dc-gray">
-                  Explore new features and integrations to boost your workflow.
-                </p>
-                <Button className="w-full h-12 bg-dc-black hover:bg-gray-800 text-dc-white font-semibold rounded-lg transition-colors">
-                  Go to AI Co-Pilot
-                  <ExternalLink size={18} className="ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
+              <TabsContent value="user-whisperer">
+                <UserWhispererComponent />
+              </TabsContent>
 
-            <Card className="bg-dc-white border-dc-gray-200 shadow-lg rounded-2xl p-6 transition-transform transform hover:scale-[1.01] hover:shadow-2xl">
-              <CardHeader className="p-0 mb-4">
-                <CardTitle className="text-2xl font-bold">Support</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 space-y-4">
-                <p className="text-sm text-dc-gray">
-                  Need help? Contact our support team or check the
-                  documentation.
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full h-12 bg-dc-white border border-dc-black hover:bg-gray-100 text-dc-black font-semibold rounded-lg transition-colors">
-                  Contact Support
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
+              <TabsContent value="market-maven">
+                <MarketMavenComponent />
+              </TabsContent>
 
-          {/* Placeholder for future features */}
-          <section className="pt-6">
-            <div className="text-center pt-8 border-t border-dc-gray-200">
-              <p className="text-sm text-dc-gray">
-                More features are coming soon!
-              </p>
-            </div>
+              <TabsContent value="narrative-architect">
+                <NarrativeArchitectComponent />
+              </TabsContent>
+            </Tabs>
           </section>
         </div>
       </main>

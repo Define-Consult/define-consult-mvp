@@ -16,79 +16,127 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-
-interface AgentActivity {
-  id: string;
-  agent_type: string;
-  action_type: string;
-  title: string;
-  description: string;
-  status: 'new' | 'processing' | 'completed' | 'error';
-  created_at: string;
-}
-
-interface DashboardStats {
-  total_transcripts: number;
-  completed_transcripts: number;
-  active_competitor_watches: number;
-  recent_competitor_updates: number;
-  generated_content_pieces: number;
-  agent_activities_today: number;
-}
+import {
+  generalApi,
+  userWhispererApi,
+  marketMavenApi,
+  narrativeArchitectApi,
+  DashboardStats,
+  AgentActivity,
+} from '@/lib/api/agents';
 
 export default function AIActionCenter() {
   const { data: session } = useSession();
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agentHealth, setAgentHealth] = useState({
+    user_whisperer: false,
+    market_maven: false,
+    narrative_architect: false,
+  });
 
-  // Mock data for now - will be replaced with real API calls
+  // Load dashboard data
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStats({
-        total_transcripts: 5,
-        completed_transcripts: 3,
-        active_competitor_watches: 2,
-        recent_competitor_updates: 1,
-        generated_content_pieces: 8,
-        agent_activities_today: 4,
-      });
+    const loadDashboardData = async () => {
+      setLoading(true);
 
-      setActivities([
-        {
-          id: '1',
-          agent_type: 'user_whisperer',
-          action_type: 'transcript_processed',
-          title: 'Customer Interview #3 Processed',
-          description:
-            'Extracted 4 problem statements and 6 user stories from customer feedback',
-          status: 'completed',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          agent_type: 'market_maven',
-          action_type: 'competitor_analyzed',
-          title: 'Competitor Feature Update Detected',
-          description:
-            'Notion AI released new collaboration features - impact analysis ready',
-          status: 'new',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          agent_type: 'narrative_architect',
-          action_type: 'content_generated',
-          title: 'Social Media Content Ready',
-          description:
-            '3 LinkedIn posts generated for the new dashboard feature',
-          status: 'completed',
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      setLoading(false);
-    }, 1000);
+      try {
+        // Check agent health
+        const healthResponse = await generalApi.healthCheckAll();
+        if (healthResponse.success) {
+          setAgentHealth(healthResponse.data);
+        }
+
+        // Load dashboard stats
+        const statsResponse = await generalApi.getDashboardStats();
+        if (statsResponse.success) {
+          const data = statsResponse.data as any; // Temporary type assertion
+          setStats({
+            total_transcripts: data.total_transcripts || 0,
+            completed_transcripts: data.completed_transcripts || 0,
+            active_competitor_watches: data.active_competitor_watches || 0,
+            recent_competitor_updates: data.recent_competitor_updates || 0,
+            generated_content_pieces: data.generated_content_pieces || 0,
+            agent_activities_today: data.agent_activities_today || 0,
+          });
+        }
+
+        // Load recent activities (mock for now - would come from a combined activities endpoint)
+        const [transcripts, competitorUpdates, content] = await Promise.all([
+          userWhispererApi.getTranscripts(),
+          marketMavenApi.getCompetitorUpdates('new', 5),
+          narrativeArchitectApi.getAllContent(undefined, undefined, 5),
+        ]);
+
+        const mockActivities: AgentActivity[] = [];
+
+        // Add transcript activities
+        if (transcripts.success && transcripts.data?.transcripts) {
+          transcripts.data.transcripts
+            .slice(0, 3)
+            .forEach((transcript: any) => {
+              mockActivities.push({
+                id: `transcript-${transcript.id}`,
+                agent_type: 'user_whisperer',
+                action_type: 'transcript_processed',
+                title: `${transcript.title} Processed`,
+                description: `Extracted insights from customer feedback`,
+                status:
+                  transcript.status === 'completed'
+                    ? 'completed'
+                    : transcript.status === 'processing'
+                    ? 'processing'
+                    : 'new',
+                created_at: transcript.created_at,
+              });
+            });
+        }
+
+        // Add competitor update activities
+        if (competitorUpdates.success && competitorUpdates.data) {
+          competitorUpdates.data.slice(0, 2).forEach((update: any) => {
+            mockActivities.push({
+              id: `competitor-${update.id}`,
+              agent_type: 'market_maven',
+              action_type: 'competitor_analyzed',
+              title: `${update.competitor_name} Update Detected`,
+              description: update.title,
+              status: 'new',
+              created_at: update.detected_at,
+            });
+          });
+        }
+
+        // Add content generation activities
+        if (content.success && content.data?.content) {
+          content.data.content.slice(0, 2).forEach((item: any) => {
+            mockActivities.push({
+              id: `content-${item.content_id}`,
+              agent_type: 'narrative_architect',
+              action_type: 'content_generated',
+              title: `${item.platform} Content Ready`,
+              description: item.title || `${item.content_type} generated`,
+              status: item.status === 'draft' ? 'completed' : 'new',
+              created_at: item.created_at,
+            });
+          });
+        }
+
+        // Sort activities by date
+        mockActivities.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setActivities(mockActivities.slice(0, 5));
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
   const getAgentIcon = (agentType: string) => {
@@ -172,7 +220,7 @@ export default function AIActionCenter() {
   return (
     <div className="space-y-8">
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -184,7 +232,14 @@ export default function AIActionCenter() {
                   {stats?.completed_transcripts}/{stats?.total_transcripts}
                 </p>
               </div>
-              <Brain className="h-8 w-8 text-blue-600" />
+              <div className="flex flex-col items-center">
+                <Brain className="h-8 w-8 text-blue-600" />
+                <div
+                  className={`w-2 h-2 rounded-full mt-1 ${
+                    agentHealth.user_whisperer ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -194,13 +249,20 @@ export default function AIActionCenter() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Competitor Updates
+                  Competitor Watches
                 </p>
                 <p className="text-2xl font-bold">
-                  {stats?.recent_competitor_updates}
+                  {stats?.active_competitor_watches || 0}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-600" />
+              <div className="flex flex-col items-center">
+                <TrendingUp className="h-8 w-8 text-green-600" />
+                <div
+                  className={`w-2 h-2 rounded-full mt-1 ${
+                    agentHealth.market_maven ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -213,10 +275,44 @@ export default function AIActionCenter() {
                   Content Generated
                 </p>
                 <p className="text-2xl font-bold">
-                  {stats?.generated_content_pieces}
+                  {stats?.generated_content_pieces || 0}
                 </p>
               </div>
-              <PenTool className="h-8 w-8 text-purple-600" />
+              <div className="flex flex-col items-center">
+                <PenTool className="h-8 w-8 text-purple-600" />
+                <div
+                  className={`w-2 h-2 rounded-full mt-1 ${
+                    agentHealth.narrative_architect
+                      ? 'bg-green-500'
+                      : 'bg-red-500'
+                  }`}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Agent Status
+                </p>
+                <p className="text-2xl font-bold">
+                  {Object.values(agentHealth).filter(Boolean).length}/3
+                </p>
+              </div>
+              <div className="flex flex-col items-center">
+                <CheckCircle
+                  className={`h-8 w-8 ${
+                    Object.values(agentHealth).every(Boolean)
+                      ? 'text-green-600'
+                      : 'text-yellow-600'
+                  }`}
+                />
+                <p className="text-xs text-gray-500 mt-1">Online</p>
+              </div>
             </div>
           </CardContent>
         </Card>
