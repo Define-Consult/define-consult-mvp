@@ -14,7 +14,7 @@ celery_app = Celery("tasks", broker=CELERY_BROKER_URL, backend=CELERY_RESULT_BAC
 
 # Import after celery_app is created to avoid circular imports
 from db.database import SessionLocal
-from models.ai_models import Transcript, AgentActivity
+from models.ai_models import Transcript, AgentActivity, GeneratedContent
 from services.ai_service import AIService
 
 logger = logging.getLogger(__name__)
@@ -208,6 +208,115 @@ def process_competitor_analysis_task(
                 "error": str(e),
                 "processing_failed": True,
             }
+            db.commit()
+
+        # Re-raise for Celery to handle
+        raise self.retry(exc=e, countdown=60, max_retries=3)
+
+    finally:
+        db.close()
+
+
+@celery_app.task(bind=True)
+def process_content_generation_task(
+    self, activity_id: str, content_id: str, generation_request: dict, user_id: int
+) -> Dict[str, Any]:
+    """
+    Process content generation using Narrative Architect AI
+    """
+    db = SessionLocal()
+    ai_service = AIService()
+
+    try:
+        # Get the activity and content records
+        from uuid import UUID
+
+        activity = (
+            db.query(AgentActivity)
+            .filter(AgentActivity.id == UUID(activity_id))
+            .first()
+        )
+        content_record = (
+            db.query(GeneratedContent)
+            .filter(GeneratedContent.id == UUID(content_id))
+            .first()
+        )
+
+        if not activity or not content_record:
+            raise ValueError(
+                f"Activity {activity_id} or Content {content_id} not found"
+            )
+
+        # Update status to processing
+        activity.status = "processing"
+        content_record.status = "processing"
+        activity.activity_metadata = {
+            **activity.activity_metadata,
+            "processing_started": True,
+        }
+        db.commit()
+
+        # Perform Narrative Architect AI content generation
+        generated_content = ai_service.generate_content(
+            platform=generation_request["platform"],
+            content_type=generation_request["content_type"],
+            source_material=generation_request["source_material"],
+            context={
+                "user_id": user_id,
+                "activity_id": activity_id,
+                "content_id": content_id,
+                "target_audience": generation_request.get("target_audience", ""),
+                "brand_tone": generation_request.get("brand_tone", ""),
+                "additional_context": generation_request.get("context", ""),
+            },
+        )
+
+        # Update content record with generated results
+        content_record.content = generated_content.get(
+            "content", "Content generation completed"
+        )
+        content_record.title = generated_content.get("title")
+        content_record.status = "draft"
+
+        # Update activity with generation results
+        activity.status = "success"
+        activity.activity_metadata = {
+            **activity.activity_metadata,
+            "generation_results": generated_content,
+            "processing_completed": True,
+            "content_length": len(generated_content.get("content", "")),
+        }
+
+        db.commit()
+
+        logger.info(
+            f"Narrative Architect content generation completed for activity {activity_id}"
+        )
+
+        return {
+            "status": "completed",
+            "activity_id": activity_id,
+            "content_id": content_id,
+            "content_preview": generated_content.get("content", "")[:100] + "...",
+            "message": "Content generation processed successfully",
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing content generation {activity_id}: {str(e)}")
+
+        # Update activity and content status to failed
+        if "activity" in locals():
+            activity.status = "error"
+            activity.error_message = str(e)
+            activity.activity_metadata = {
+                **activity.activity_metadata,
+                "error": str(e),
+                "processing_failed": True,
+            }
+            db.commit()
+
+        if "content_record" in locals():
+            content_record.status = "failed"
             db.commit()
 
         # Re-raise for Celery to handle
