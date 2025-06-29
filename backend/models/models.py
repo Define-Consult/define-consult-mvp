@@ -4,6 +4,15 @@ from sqlalchemy.sql import func
 from db.database import Base
 
 
+from models.ai_models import (
+    Transcript,
+    CompetitorWatch,
+    CompetitorUpdate,
+    GeneratedContent,
+    AgentActivity,
+)
+
+
 # --- Plan Model ---
 class Plan(Base):
     __tablename__ = "plans"
