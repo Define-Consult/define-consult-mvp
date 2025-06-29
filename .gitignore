@@ -16,3 +16,7 @@ firebase-adminsdk.json
 
 # VSCode
 .vscode/
+
+# Root
+dc-product-plan.md
+dc-technical-plan.md
