@@ -507,6 +507,67 @@ async def test_get_generated_content(
         )
 
 
+@router.get("/test/content")
+async def test_list_generated_content(
+    platform: Optional[str] = None,
+    content_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 20,
+):
+    """
+    TEST ENDPOINT: List generated content without authentication
+    """
+    try:
+        # Return mock generated content for testing
+        mock_content = [
+            {
+                "id": "content-001",
+                "platform": "linkedin",
+                "content_type": "feature_announcement",
+                "title": "Exciting New AI Feature Launch",
+                "content": "We're thrilled to announce our latest AI-powered feature that will revolutionize how you analyze customer feedback...",
+                "status": "published",
+                "created_at": "2024-12-28T10:00:00Z",
+            },
+            {
+                "id": "content-002",
+                "platform": "twitter",
+                "content_type": "product_update",
+                "title": "User Whisperer 2.0 Update",
+                "content": "🚀 User Whisperer 2.0 is here! New features: Real-time sentiment analysis, Advanced PRD generation, Smart tagging...",
+                "status": "draft",
+                "created_at": "2024-12-27T15:30:00Z",
+            },
+            {
+                "id": "content-003",
+                "platform": "medium",
+                "content_type": "thought_leadership",
+                "title": "The Future of AI in Product Management",
+                "content": "As AI continues to evolve, product managers are finding new ways to leverage these tools for better decision making...",
+                "status": "scheduled",
+                "created_at": "2024-12-26T09:15:00Z",
+            },
+        ]
+
+        # Apply filters if provided
+        if platform:
+            mock_content = [c for c in mock_content if c["platform"] == platform]
+        if content_type:
+            mock_content = [
+                c for c in mock_content if c["content_type"] == content_type
+            ]
+        if status:
+            mock_content = [c for c in mock_content if c["status"] == status]
+
+        return mock_content[:limit]
+
+    except Exception as e:
+        logger.error(f"Error in test list generated content: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list test generated content: {str(e)}"
+        )
+
+
 # --- Health Check ---
 @router.get("/health")
 async def health_check():
