@@ -21,6 +21,8 @@ from dependencies import get_db, get_current_user_id
 from auth.mail import auth_router
 from auth.firebase_auth import firebase_router
 from api.users.users import router as users_router
+from api.users.profile import router as profile_router
+from api.billing.billing import router as billing_router
 from api.plans.plans import router as plans_router
 from api.features.user_whisperer import router as user_whisperer_router
 from api.features.transcripts import router as transcripts_router
@@ -76,6 +78,8 @@ def on_startup():
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(firebase_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(profile_router, prefix="/api/v1")
+app.include_router(billing_router, prefix="/api/v1")
 app.include_router(plans_router, prefix="/api/v1")
 app.include_router(user_whisperer_router, prefix="/api/v1")
 app.include_router(transcripts_router, prefix="/api/v1")
@@ -242,26 +246,162 @@ async def get_test_market_maven_updates():
     ]
 
 
-@app.get("/api/v1/test/agents/narrative-architect/content")
-async def get_test_narrative_architect_content():
-    """Get test narrative architect content (no auth required)"""
+@app.get("/api/v1/test/users/profile")
+async def get_test_user_profile():
+    """Get test user profile (no auth required)"""
     return {
-        "content": [
-            {
-                "content_id": "test-content-1",
-                "platform": "linkedin",
-                "content_type": "social_post",
-                "title": "AI Innovation Update",
-                "status": "draft",
-                "created_at": "2024-12-29T12:00:00Z",
-            },
-            {
-                "content_id": "test-content-2",
-                "platform": "twitter",
-                "content_type": "social_post",
-                "title": "Product Launch Announcement",
-                "status": "draft",
-                "created_at": "2024-12-29T11:30:00Z",
-            },
-        ]
+        "id": "test-user-123",
+        "email": "test@example.com",
+        "name": "Test User",
+        "avatar_url": None,
+        "company_name": "Test Company",
+        "role_at_company": "Product Manager",
+        "industry": "SaaS",
+        "linkedin_profile_url": None,
+        "current_plan_id": "pro",
+        "billing_customer_id": "cus_test123",
+        "usage_stats": {
+            "total_agent_actions_this_month": 25,
+            "last_login": "2024-12-29T10:00:00Z",
+        },
+        "notification_preferences": {
+            "email_digest": True,
+            "slack_alerts": False,
+            "in_app_notifications": True,
+            "marketing_emails": False,
+        },
+        "brand_tone_preferences": {
+            "formal": 0.3,
+            "friendly": 0.7,
+            "professional": 0.6,
+            "creative": 0.4,
+        },
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-12-29T10:00:00Z",
     }
+
+
+@app.get("/api/v1/test/billing/plans")
+async def get_test_billing_plans():
+    """Get test billing plans (no auth required)"""
+    return [
+        {
+            "id": "free",
+            "name": "Free",
+            "price_usd_per_month": 0.0,
+            "monthly_agent_action_limit": 25,
+            "stripe_price_id": "price_test_free",
+            "is_metered_billing": False,
+            "available_integrations": ["slack"],
+            "priority_support": False,
+            "is_team_plan": False,
+        },
+        {
+            "id": "pro",
+            "name": "Pro",
+            "price_usd_per_month": 74.0,
+            "monthly_agent_action_limit": 500,
+            "stripe_price_id": "price_test_pro",
+            "is_metered_billing": False,
+            "available_integrations": ["slack", "zoom", "notion"],
+            "priority_support": True,
+            "is_team_plan": False,
+        },
+        {
+            "id": "team",
+            "name": "Team",
+            "price_usd_per_month": 349.0,
+            "monthly_agent_action_limit": 5000,
+            "stripe_price_id": "price_test_team",
+            "is_metered_billing": False,
+            "available_integrations": ["slack", "zoom", "notion", "jira", "zendesk"],
+            "priority_support": True,
+            "is_team_plan": True,
+        },
+    ]
+
+
+@app.get("/api/v1/test/billing/usage")
+async def get_test_billing_usage():
+    """Get test billing usage (no auth required)"""
+    return {
+        "current_plan": "Pro",
+        "agent_actions_used": 235,
+        "agent_actions_limit": 500,
+        "billing_period_start": "2024-12-01T00:00:00Z",
+        "billing_period_end": "2024-12-31T23:59:59Z",
+        "estimated_cost": 74.0,
+    }
+
+
+@app.post("/api/v1/demo/setup-user")
+async def setup_demo_user(db: Annotated[Session, Depends(get_db)]):
+    """Setup/create the demo user account for testing"""
+    from models.models import User
+
+    demo_email = "demo@defineconsult.co"
+    firebase_uid = "demo-user-defineconsult"
+
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == demo_email).first()
+
+    if existing_user:
+        # Update existing user
+        existing_user.name = "Demo User"
+        existing_user.company_name = "Define Consult Demo"
+        existing_user.role_at_company = "Product Manager"
+        existing_user.industry = "AI/SaaS"
+        existing_user.linkedin_profile_url = "https://linkedin.com/in/defineconsultdemo"
+        existing_user.usage_stats = {
+            "total_agent_actions_this_month": 45,
+            "last_login": "2024-12-29T15:30:00Z",
+        }
+        existing_user.notification_preferences = {
+            "email_digest": True,
+            "slack_alerts": True,
+            "in_app_notifications": True,
+            "marketing_emails": False,
+        }
+        existing_user.brand_tone_preferences = {
+            "formal": 0.3,
+            "friendly": 0.7,
+            "professional": 0.8,
+            "creative": 0.6,
+        }
+        db.commit()
+        db.refresh(existing_user)
+        return {
+            "message": "Demo user updated successfully",
+            "user_id": existing_user.id,
+        }
+    else:
+        # Create new user
+        new_user = User(
+            firebase_uid=firebase_uid,
+            email=demo_email,
+            name="Demo User",
+            company_name="Define Consult Demo",
+            role_at_company="Product Manager",
+            industry="AI/SaaS",
+            linkedin_profile_url="https://linkedin.com/in/defineconsultdemo",
+            usage_stats={
+                "total_agent_actions_this_month": 45,
+                "last_login": "2024-12-29T15:30:00Z",
+            },
+            notification_preferences={
+                "email_digest": True,
+                "slack_alerts": True,
+                "in_app_notifications": True,
+                "marketing_emails": False,
+            },
+            brand_tone_preferences={
+                "formal": 0.3,
+                "friendly": 0.7,
+                "professional": 0.8,
+                "creative": 0.6,
+            },
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "Demo user created successfully", "user_id": new_user.id}
