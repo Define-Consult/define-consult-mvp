@@ -92,6 +92,7 @@ redis
 python-multipart
 alembic
 mailjet-rest
+stripe
 # AI/ML Libraries
 openai==1.12.0
 # LangChain dependencies for user_whisperer agent
