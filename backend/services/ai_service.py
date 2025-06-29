@@ -423,6 +423,149 @@ class AIService:
             logger.error(f"Error analyzing competitor data: {e}")
             raise
 
+    def generate_content(
+        self, platform: str, content_type: str, source_material: str, context: Dict
+    ) -> Dict:
+        """
+        Generate content using the Narrative Architect AI agent
+
+        Args:
+            platform: Target platform (linkedin, twitter, medium, etc.)
+            content_type: Type of content (feature_announcement, blog_post, etc.)
+            source_material: The source information to transform into content
+            context: Additional context for content generation
+
+        Returns:
+            Dict containing generated content and metadata
+        """
+        try:
+            # Create Narrative Architect content generation prompt
+            prompt = f"""
+            As the Narrative Architect agent for Define Consult, transform the following information into compelling content.
+
+            Platform: {platform}
+            Content Type: {content_type}
+            Target Audience: {context.get('target_audience', 'product managers and tech professionals')}
+            Brand Tone: {context.get('brand_tone', 'professional, innovative, approachable')}
+
+            Source Material:
+            {source_material}
+
+            Additional Context: {context.get('additional_context', '')}
+
+            Generate engaging content optimized for {platform} with the following structure in JSON format:
+            {{
+                "title": "Compelling title/headline (if applicable)",
+                "content": "Main content text optimized for the platform",
+                "variations": [
+                    {{
+                        "style": "Style/approach description",
+                        "content": "Content variation 1",
+                        "hashtags": ["#hashtag1", "#hashtag2"],
+                        "cta": "Call to action text"
+                    }},
+                    {{
+                        "style": "Style/approach description", 
+                        "content": "Content variation 2",
+                        "hashtags": ["#hashtag1", "#hashtag2"],
+                        "cta": "Call to action text"
+                    }},
+                    {{
+                        "style": "Style/approach description",
+                        "content": "Content variation 3", 
+                        "hashtags": ["#hashtag1", "#hashtag2"],
+                        "cta": "Call to action text"
+                    }}
+                ],
+                "engagement_strategy": "Tips for maximizing engagement on {platform}",
+                "visual_suggestions": "Suggested visual content or imagery",
+                "posting_recommendations": "Best practices for posting this content",
+                "follow_up_ideas": ["Follow-up content idea 1", "Follow-up content idea 2"]
+            }}
+
+            Platform-specific guidelines:
+
+            LinkedIn: Professional tone, thought leadership focus, 1-3 paragraphs, business value emphasis
+            Twitter: Concise and engaging, under 280 characters, conversational tone
+            Medium: Detailed and educational, 3-8 paragraphs, authoritative voice
+            Blog: Comprehensive and informative, problem-solution structure, SEO-friendly
+            Email: Personal and direct, clear subject line, strong CTA
+
+            Content should be:
+            - Authentic and aligned with Define Consult's innovative brand
+            - Value-focused for the target audience
+            - Engaging and platform-optimized
+            - Include clear calls to action
+            - Avoid jargon unless appropriate for audience
+            """
+
+            # Try Gemini first, then fall back to OpenRouter
+            if self.langchain_gemini:
+                try:
+                    response = self.langchain_gemini.invoke(prompt)
+                    result_text = response
+                except Exception as e:
+                    logger.warning(
+                        f"Gemini failed for content generation, falling back to OpenRouter: {e}"
+                    )
+                    result_text = self._call_openrouter_sync(prompt, max_tokens=1500)
+            else:
+                result_text = self._call_openrouter_sync(prompt, max_tokens=1500)
+
+            # Parse JSON response
+            try:
+                # Extract JSON from response if it contains extra text
+                if "```json" in result_text:
+                    json_start = result_text.find("```json") + 7
+                    json_end = result_text.find("```", json_start)
+                    result_text = result_text[json_start:json_end].strip()
+                elif "{" in result_text:
+                    json_start = result_text.find("{")
+                    json_end = result_text.rfind("}") + 1
+                    result_text = result_text[json_start:json_end]
+
+                content_result = json.loads(result_text)
+
+                # Validate required fields
+                required_fields = ["content", "variations"]
+                for field in required_fields:
+                    if field not in content_result:
+                        if field == "content":
+                            content_result[field] = "Content generated successfully"
+                        elif field == "variations":
+                            content_result[field] = []
+
+                return content_result
+
+            except json.JSONDecodeError as e:
+                logger.error(
+                    f"Failed to parse Narrative Architect AI response as JSON: {e}"
+                )
+                # Return fallback structure
+                return {
+                    "title": f"{content_type.replace('_', ' ').title()} for {platform.title()}",
+                    "content": f"Generated content for {platform} - {content_type}. Source: {source_material[:100]}...",
+                    "variations": [
+                        {
+                            "style": "Standard approach",
+                            "content": f"Check out our latest update! {source_material[:100]}...",
+                            "hashtags": ["#ProductManagement", "#AI", "#Innovation"],
+                            "cta": "Learn more about Define Consult",
+                        }
+                    ],
+                    "engagement_strategy": f"Optimize posting time for {platform} audience",
+                    "visual_suggestions": "Include product screenshots or infographics",
+                    "posting_recommendations": f"Follow {platform} best practices for maximum reach",
+                    "follow_up_ideas": [
+                        "Share user testimonials",
+                        "Post behind-the-scenes content",
+                    ],
+                }
+
+        except Exception as e:
+            logger.error(f"Error generating content: {e}")
+            raise
+
     def _call_openrouter_sync(self, prompt: str, max_tokens: int = 1000) -> str:
         """Synchronous call to OpenRouter API"""
         try:
