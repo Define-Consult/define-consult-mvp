@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, Dict
+from datetime import datetime
+
 
 class UserCreate(BaseModel):
     firebase_uid: str = Field(..., description="The unique Firebase User ID.")
@@ -15,6 +17,7 @@ class UserCreate(BaseModel):
     usage_stats: dict | None = None
     notification_preferences: dict | None = None
     brand_tone_preferences: dict | None = None
+
 
 class UserResponse(BaseModel):
     id: int
@@ -35,6 +38,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -48,4 +52,39 @@ class UserUpdate(BaseModel):
     notification_preferences: Optional[Dict] = None
     brand_tone_preferences: Optional[Dict] = None
 
-    
+
+class UserProfile(BaseModel):
+    """Schema for user profile response"""
+
+    id: int
+    firebase_uid: str
+    email: EmailStr
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    company_name: Optional[str] = None
+    role_at_company: Optional[str] = None
+    industry: Optional[str] = None
+    linkedin_profile_url: Optional[str] = None
+    current_plan_id: Optional[int] = None
+    billing_customer_id: Optional[str] = None
+    usage_stats: Optional[Dict] = None
+    notification_preferences: Optional[Dict] = None
+    brand_tone_preferences: Optional[Dict] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for updating user profile"""
+
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    company_name: Optional[str] = None
+    role_at_company: Optional[str] = None
+    industry: Optional[str] = None
+    linkedin_profile_url: Optional[str] = None
+    notification_preferences: Optional[Dict] = None
+    brand_tone_preferences: Optional[Dict] = None
