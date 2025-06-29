@@ -95,3 +95,4 @@ celery
 redis
 python-multipart
 alembic
+mailjet-rest

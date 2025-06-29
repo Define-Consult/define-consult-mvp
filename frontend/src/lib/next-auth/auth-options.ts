@@ -62,9 +62,83 @@ export const authOptions: NextAuthOptions = {
         token.emailVerified = Boolean(user.emailVerified);
       }
 
-      // For Google OAuth, use the Google ID as the user ID
-      if (account?.provider === 'google' && account?.providerAccountId) {
-        token.id = account.providerAccountId;
+      // For Google OAuth, create user in Firebase and sync with backend
+      if (
+        account?.provider === 'google' &&
+        user &&
+        account?.providerAccountId
+      ) {
+        try {
+          // First, create or get the user in Firebase via our backend
+          const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+
+          // Create Firebase user via backend (which has admin SDK)
+          const firebaseResponse = await fetch(
+            `${backendUrl}/api/v1/auth/create-or-get-firebase-user`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: user.email,
+                name: user.name,
+                avatar_url: user.image,
+                provider: 'google',
+                provider_id: account.providerAccountId,
+              }),
+            }
+          );
+
+          if (firebaseResponse.ok) {
+            const firebaseUser = await firebaseResponse.json();
+            token.id = firebaseUser.firebase_uid;
+            console.log(
+              'Successfully created/got Firebase user:',
+              firebaseUser.firebase_uid
+            );
+
+            // Now sync with our PostgreSQL backend
+            const syncResponse = await fetch(
+              `${backendUrl}/api/v1/users/sync`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  firebase_uid: firebaseUser.firebase_uid,
+                  email: user.email,
+                  name: user.name,
+                  avatar_url: user.image,
+                }),
+              }
+            );
+
+            if (syncResponse.ok) {
+              console.log('Successfully synced Google user with backend');
+            } else {
+              console.error(
+                'Failed to sync Google user with backend:',
+                await syncResponse.text()
+              );
+            }
+          } else {
+            console.error(
+              'Failed to create Firebase user:',
+              await firebaseResponse.text()
+            );
+            // Fallback to using Google ID
+            token.id = account.providerAccountId;
+          }
+        } catch (error) {
+          console.error(
+            'Error creating Firebase user or syncing with backend:',
+            error
+          );
+          // Fallback to using Google ID
+          token.id = account.providerAccountId;
+        }
       }
 
       return token;

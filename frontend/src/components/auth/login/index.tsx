@@ -145,8 +145,23 @@ export default function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success('Password reset email sent! Check your inbox.');
+      const res = await fetch('/api/v1/auth/send-reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(
+          data.message || 'Password reset email sent! Check your inbox.'
+        );
+      } else {
+        throw new Error(data.detail || 'Failed to send password reset email.');
+      }
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message || 'Failed to send password reset email.');

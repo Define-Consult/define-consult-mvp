@@ -6,10 +6,7 @@ import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase/client';
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,7 +20,6 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
-import { POST } from '@/app/api/auth/[...nextauth]/route';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -77,9 +73,23 @@ export default function SignupForm() {
       );
 
       if (userCredential.user) {
-        // 2. Send verification email (for spam prevention only)
+        // 2. Send verification email using the new backend endpoint
         try {
-          await sendEmailVerification(userCredential.user);
+          const res = await fetch('/api/v1/auth/send-verification-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: userCredential.user.email }),
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(
+              errorData.detail || 'Failed to send verification email.'
+            );
+          }
+
           toast.success(
             'Account created! A verification email has been sent to confirm your email address.'
           );
@@ -93,7 +103,7 @@ export default function SignupForm() {
         // 3. Backend Integration (PostgreSQL)
         try {
           const user = userCredential.user;
-          const res = await fetch('api/v1/users', {
+          const res = await fetch('/api/v1/users', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -112,6 +122,9 @@ export default function SignupForm() {
               errorData.detail || 'Failed to create user in backend'
             );
           }
+
+          const result = await res.json();
+          console.log('Backend sync result:', result);
           toast.success('User synced with backend successfully');
         } catch (backendError: any) {
           console.error('Backend sync error:', backendError);
