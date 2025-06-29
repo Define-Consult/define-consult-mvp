@@ -30,7 +30,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/user-whisperer", tags=["User Whisperer Agent"])
+router = APIRouter(prefix="/agents/user-whisperer", tags=["User Whisperer Agent"])
 
 
 @router.post("/upload-transcript", status_code=status.HTTP_201_CREATED)
