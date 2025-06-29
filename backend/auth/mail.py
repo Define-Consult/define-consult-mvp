@@ -57,9 +57,6 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
-# Remove the old duplicate router - we'll use only auth_router below
-
-
 # --- Pydantic Models for requests ---
 class EmailRequest(BaseModel):
     email: EmailStr
