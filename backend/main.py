@@ -18,6 +18,7 @@ from dependencies import get_db, get_current_user_id
 
 # Routers
 from auth.mail import auth_router
+from auth.firebase_auth import firebase_router
 from api.users.users import router as users_router
 from api.plans.plans import router as plans_router
 from api.features.user_whisperer import router as user_whisperer_router
@@ -69,6 +70,7 @@ def on_startup():
 
 # --- API Routers ---
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(firebase_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(plans_router, prefix="/api/v1")
 app.include_router(user_whisperer_router, prefix="/api/v1")
