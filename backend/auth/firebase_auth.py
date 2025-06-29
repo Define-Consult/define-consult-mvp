@@ -33,6 +33,14 @@ class GoogleUserRequest(BaseModel):
     provider_id: str
 
 
+class DemoUserRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str = "Demo User"
+    company_name: str = "Define Consult Demo"
+    role_at_company: str = "Product Manager"
+
+
 # --- Router ---
 firebase_router = APIRouter(prefix="/auth", tags=["Firebase Authentication"])
 
@@ -81,6 +89,55 @@ async def create_or_get_firebase_user(request: FirebaseUserRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create/get Firebase user: {e}",
         )
+
+
+@firebase_router.post("/create-demo-user", status_code=status.HTTP_201_CREATED)
+async def create_demo_user(request: DemoUserRequest):
+    """
+    Creates a demo user in Firebase with email/password authentication.
+    This is for development/testing purposes.
+    """
+    try:
+        # Create user in Firebase with email/password
+        firebase_user = auth.create_user(
+            email=request.email,
+            password=request.password,
+            display_name=request.name,
+            email_verified=True,  # Skip email verification for demo
+        )
+
+        logging.info(f"Demo user created in Firebase: {firebase_user.uid}")
+
+        return {
+            "success": True,
+            "message": "Demo user created successfully",
+            "firebase_uid": firebase_user.uid,
+            "email": request.email,
+            "login_credentials": {
+                "email": request.email,
+                "password": request.password,
+                "note": "Use these credentials to log in to the frontend",
+            },
+        }
+
+    except Exception as e:
+        logging.error(f"Error creating demo user: {e}")
+        if "already exists" in str(e).lower():
+            return {
+                "success": True,
+                "message": "Demo user already exists",
+                "email": request.email,
+                "login_credentials": {
+                    "email": request.email,
+                    "password": request.password,
+                    "note": "Use these credentials to log in to the frontend",
+                },
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to create demo user: {str(e)}",
+            )
 
 
 @firebase_router.get("/test-firebase", status_code=status.HTTP_200_OK)
