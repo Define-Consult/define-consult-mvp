@@ -25,6 +25,7 @@ from api.features.user_whisperer import router as user_whisperer_router
 from api.features.transcripts import router as transcripts_router
 from api.agents.user_whisperer import router as user_whisperer_agent_router
 from api.agents.market_maven import router as market_maven_agent_router
+from api.agents.narrative_architect import router as narrative_architect_agent_router
 
 # --- Logger Initialization ---
 logging.basicConfig(
@@ -79,6 +80,7 @@ app.include_router(user_whisperer_router, prefix="/api/v1")
 app.include_router(transcripts_router, prefix="/api/v1")
 app.include_router(user_whisperer_agent_router, prefix="/api/v1")
 app.include_router(market_maven_agent_router, prefix="/api/v1")
+app.include_router(narrative_architect_agent_router, prefix="/api/v1")
 
 
 # --- General API Endpoints ---
